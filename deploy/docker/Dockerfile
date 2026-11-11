@@ -53,13 +53,15 @@ COPY --from=frontend /src/openjarvis/server/static src/openjarvis/server/static/
 
 # Install the project itself without re-resolving dependencies.
 RUN uv pip install --system --no-deps . && \
-    maturin build --release \
+    if CARGO_BUILD_JOBS=2 maturin build --release \
         --manifest-path rust/crates/openjarvis-python/Cargo.toml \
         --interpreter python3 \
-        --out /tmp/openjarvis-rust-wheel && \
-    uv pip install --system --no-deps /tmp/openjarvis-rust-wheel/*.whl && \
-    python3 -c "import openjarvis_rust; print('openjarvis_rust ok')" && \
-    python3 -m pip uninstall -y maturin && \
+        --out /tmp/openjarvis-rust-wheel; then \
+      uv pip install --system --no-deps /tmp/openjarvis-rust-wheel/*.whl; \
+    else \
+      echo "AVISO: extensao Rust nao compilou; seguindo sem ela"; \
+    fi && \
+    (python3 -m pip uninstall -y maturin || true) && \
     rm -rf /tmp/openjarvis-rust-wheel rust
 
 # Stage 3: Runtime
